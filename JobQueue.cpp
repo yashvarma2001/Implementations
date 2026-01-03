@@ -1,6 +1,7 @@
 #include <queue>
 #include <mutex>
 #include <condition_variable>
+#include <stdexcept> // Required for "invalid_argument"
 
 using namespace std;
 
@@ -16,6 +17,9 @@ private:
 
 public:
     SimpleQueue(int cap) {
+        if (cap <= 0) {
+            throw invalid_argument("Capacity must be > 0");
+        }
         this->capacity = cap;
     }
 
@@ -26,7 +30,7 @@ public:
         // State: LOCKED. (You have the key).
 
         // 1. Wait if Full
-        while (q.size() == capacity) {
+        while (q.size() >= capacity) {
             cv.wait(lock);
             // Step A (Going to sleep): It Unlocks (Releases the key so others can use it).
             // Step B (Sleeping): It waits.
