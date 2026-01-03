@@ -15,7 +15,9 @@ private:
                             */ 
 
 public:
-    SimpleQueue(int cap) : capacity(cap) {}
+    SimpleQueue(int cap) {
+        this->capacity = cap;
+    }
 
     // PRODUCER (Add Job)
     void add(int item) {

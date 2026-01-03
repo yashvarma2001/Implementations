@@ -15,9 +15,11 @@ private:
     mutex mtx; // a Mutex guards the Critical Section
 
 public:
-    TokenBucket(long cap, double rate) 
-        : capacity(cap), refillRate(rate), currentTokens(cap) {
-        lastRefillTime = chrono::steady_clock::now();
+    TokenBucket(long cap, double rate) {
+        this->capacity = cap;
+        this->refillRate = rate;
+        this->currentTokens = cap;
+        this->lastRefillTime = chrono::steady_clock::now();
     }
 
     bool allowRequest(int tokensNeeded) {
