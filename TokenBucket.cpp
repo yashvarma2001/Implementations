@@ -1,7 +1,9 @@
 #include <iostream>
-#include <mutex> // Lock library
-#include <chrono> // handles precise time
-#include <algorithm> // math helper library
+#include <mutex>
+#include <chrono>
+#include <algorithm>
+#include <thread>
+#include <vector>
 
 using namespace std;
 
@@ -11,8 +13,8 @@ private:
     double refillRate;
     double currentTokens;
     
-    chrono::steady_clock::time_point lastRefillTime; //time_point: Represents a specific instant in time (a timestamp).
-    mutex mtx; // a Mutex guards the Critical Section
+    chrono::steady_clock::time_point lastRefillTime;
+    mutex mtx;
 
 public:
     TokenBucket(long cap, double rate) {
@@ -23,13 +25,11 @@ public:
     }
 
     bool allowRequest(int tokensNeeded) {
-        // A Mutex locks a Section of Code.
-        lock_guard<mutex> lock(mtx); // acquires mutex lock on execution of this line
-        // automatically releases at end of function.
+        lock_guard<mutex> lock(mtx);
 
         auto now = chrono::steady_clock::now();
-        chrono::duration<double> elapsed = now - lastRefillTime; // duration: Represents a time interval (the difference between two time_points).
-        double secondsPassed = elapsed.count(); // .count(): A method that returns the numerical value of the duration (in seconds, because we cast it to duration<double>)
+        chrono::duration<double> elapsed = now - lastRefillTime;
+        double secondsPassed = elapsed.count();
 
         double tokensToAdd = secondsPassed * refillRate;
 
@@ -40,8 +40,32 @@ public:
 
         if (currentTokens >= tokensNeeded) {
             currentTokens -= tokensNeeded;
+            cout << "Request Allowed!" << endl; // Added print to see output
             return true;
         }
+        cout << "Request Denied!" << endl; // Added print to see output
         return false;
     }
 };
+
+int main() {
+    TokenBucket limiter(10, 1);
+    vector<thread> threads;
+
+    for(int i = 0; i < 5; i++){
+        threads.push_back(thread([&, i]() {
+            bool allowed = limiter.allowRequest(1);
+            if(!allowed){
+                this_thread::sleep_for(chrono::seconds(2));
+                limiter.allowRequest(1);
+            }
+        }));
+        this_thread::sleep_for(chrono::milliseconds(100));
+    }
+
+    for(auto& t : threads) {
+        if(t.joinable()) t.join();
+    }
+
+    return 0;
+}
