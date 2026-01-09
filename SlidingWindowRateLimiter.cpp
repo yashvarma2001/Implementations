@@ -37,7 +37,7 @@ public:
         lock_guard<mutex> lock(mtx);
         auto now = steady_clock::now();
 
-        while(!history.empty() && (now-history.front() > windowSizeSeconds)){
+        while(!history.empty() && (now - history.front() > windowSizeSeconds)){
             history.pop();
         }
         

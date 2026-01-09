@@ -4,7 +4,6 @@
 #include <unordered_map>
 using namespace std;
 
-// 1. Message Class
 class Message {
 private:
     string text;

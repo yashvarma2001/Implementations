@@ -9,6 +9,7 @@
 #include <vector>
 
 using namespace std;
+using namespace std::chrono;
 template <typename T>
 
 class ThreadSafeQueue {
@@ -28,8 +29,8 @@ private:
 
     // Helper for Timestamp Logging
     long long getCurrentTime() {
-        return chrono::duration_cast<chrono::milliseconds>(
-            chrono::system_clock::now().time_since_epoch()
+        return duration_cast<milliseconds>(
+            system_clock::now().time_since_epoch()
         ).count();
     }
 
@@ -101,7 +102,7 @@ int main() {
         for (const string& msg : messages) {
             cout << "Adding: " << msg << endl;
             myQueue.add(msg);
-            this_thread::sleep_for(chrono::milliseconds(100));
+            this_thread::sleep_for(milliseconds(100));
         }
     }));
 
@@ -110,7 +111,7 @@ int main() {
         for (int i = 0; i < 4; i++) {
             string s = myQueue.take();
             cout << "Took: " << s << endl;
-            this_thread::sleep_for(chrono::milliseconds(150));
+            this_thread::sleep_for(milliseconds(150));
         }
     }));
 

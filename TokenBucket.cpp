@@ -6,6 +6,7 @@
 #include <vector>
 
 using namespace std;
+using namespace std::chrono;
 
 class TokenBucket {
 private:
@@ -13,7 +14,7 @@ private:
     double refillRate;
     double currentTokens;
     
-    chrono::steady_clock::time_point lastRefillTime;
+    steady_clock::time_point lastRefillTime;
     mutex mtx;
 
 public:
@@ -21,14 +22,14 @@ public:
         this->capacity = cap;
         this->refillRate = rate;
         this->currentTokens = cap;
-        this->lastRefillTime = chrono::steady_clock::now();
+        this->lastRefillTime = steady_clock::now();
     }
 
     bool allowRequest(int tokensNeeded) {
         lock_guard<mutex> lock(mtx);
 
-        auto now = chrono::steady_clock::now();
-        chrono::duration<double> elapsed = now - lastRefillTime;
+        auto now = steady_clock::now();
+        duration<double> elapsed = now - lastRefillTime;
         double secondsPassed = elapsed.count();
 
         double tokensToAdd = secondsPassed * refillRate;
@@ -56,11 +57,11 @@ int main() {
         threads.push_back(thread([&, i]() {
             bool allowed = limiter.allowRequest(1);
             if(!allowed){
-                this_thread::sleep_for(chrono::seconds(2));
+                this_thread::sleep_for(seconds(2));
                 limiter.allowRequest(1);
             }
         }));
-        this_thread::sleep_for(chrono::milliseconds(100));
+        this_thread::sleep_for(milliseconds(100));
     }
 
     for(auto& t : threads) {

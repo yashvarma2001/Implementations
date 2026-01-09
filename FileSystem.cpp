@@ -3,7 +3,7 @@
 #include <string>
 #include <map>
 #include <sstream>
-#include <algorithm> // For sort
+#include <algorithm>
 
 using namespace std;
 
@@ -64,14 +64,12 @@ public:
 
         // Traverse down the path
         for (string& part : parts) {
-            // FIX: Check if it's a file first
             if (curr->files.count(part)) {
                 return {part};
             }
             
-            // FIX: Use .find() instead of [] to avoid creating empty directories accidentally
             if (curr->dirs.find(part) == curr->dirs.end()) {
-                return {}; // Path doesn't exist
+                return {};
             }
             curr = curr->dirs[part];
         }
