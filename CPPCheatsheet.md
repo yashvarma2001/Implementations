@@ -1,6 +1,6 @@
 # CPP Cheatsheet
 
-## **1. The Essential Setup (Headers)**
+## **1. The Essentials**
 
 ```cpp
 #include <iostream>
@@ -13,6 +13,123 @@
 
 using namespace std;
 ```
+
+## Lambda Functions
+
+### The Formula
+
+Every lambda follows this pattern:
+
+[ Capture ] ( Arguments ) { Body };
+
+---
+
+### 1. The "Standard" Lambda (Use this 90% of the time)
+
+This is what you use inside `std::thread` or generic algorithms.
+
+**Syntax:** `[&]` (Capture everything by reference)
+
+```cpp
+int x = 10;
+int y = 20;
+
+auto update = [&]() {
+    x = 50;  // Allowed: We can modify 'x'
+    y = 60;  // Allowed: We can modify 'y'
+};
+
+update(); // x is now 50, y is now 60
+```
+
+---
+
+### 2. The "Copy Specific Variable" Lambda
+
+This is **critical** for loops (like your thread loop).
+
+**Syntax:** `[&, i]` (Capture everything by reference, but COPY `i`)
+
+```cpp
+for(int i = 0; i < 3; i++) {
+    // We MUST copy 'i', otherwise all threads might see 'i=3' at the end
+    auto task = [&, i]() {
+        cout << "I am thread number " << i << endl; 
+    };
+    task();
+}
+```
+
+---
+
+### 3. The "Read-Only" Lambda
+
+If you want to ensure the lambda *cannot* change your variables.
+
+**Syntax:** `[=]` (Capture everything by Value/Copy)
+
+```cpp
+int x = 10;
+
+auto read = [=]() {
+    cout << x; // Allowed: We can read 'x'
+    // x = 20; // ERROR! You cannot modify a copy
+};
+```
+
+---
+
+### 4. The "Pure" Lambda
+
+No outside variables needed. Just a standalone function.
+
+**Syntax:** `[]` (Capture nothing)
+
+```cpp
+auto sayHello = []() {
+    cout << "Hello World";
+};
+```
+
+---
+
+### 5. Lambda with Arguments
+
+Just like a normal function.
+
+**Syntax:** `(int a, int b)`
+
+```cpp
+auto add = [](int a, int b) {
+    return a + b;
+};
+
+int sum = add(5, 10); // Returns 15
+```
+
+---
+
+### Summary Table for Interviews
+
+| **Capture** | **Meaning** | **When to use?** |
+| --- | --- | --- |
+| `[&]` | **Reference All** | **Default.** Use this for almost everything (Threads, helpers). |
+| `[&, i]` | **Ref All + Copy `i`** | **Loops.** Essential when spawning threads in a `for` loop. |
+| `[=]` | **Copy All** | **Safety.** When you just want to print/read data without changing it. |
+| `[]` | **Empty** | **Utility.** For simple math or logic that doesn't need outside data. |
+
+### Visualizing the "Thread Sandwich"
+
+This is the only complex one you'll write.
+
+```cpp
+//     [Capture] (Args) { Body }
+thread([&, i]    ()     { 
+    // ... code ... 
+});
+```
+
+---
 
 ## 2. Locks and Mutexes
 
@@ -323,3 +440,113 @@ long long currentTimeMs = chrono::duration_cast<chrono::milliseconds>(
 2. **joinable()**: Always check if(t.joinable()) before joining (good practice).
 3. **mutable**: If a lambda needs to modify a captured value (rare, but good to know).
 4. **this**: Pass this as the second argument when threading a member function: thread(&Class::func, this).
+
+## **The Core Decision: Interface vs. Abstract Class**
+
+This is the most common architectural question. Use the **"Litmus Test"**.
+
+| **Feature** | **Abstract Class** | **Interface (Pure Virtual)** |
+| --- | --- | --- |
+| **Relationship** | **"Is-A"** (Family) | **"Can-Do"** (Capability) |
+| **Shared State?** | **YES.** Stores variables (`name`, `id`, `size`). | **NO.** Stateless contract only. |
+| **Logic?** | Can have implemented methods (Default behavior). | No implementation (usually). |
+| **Inheritance** | Single Inheritance only. | Multiple Inheritance allowed. |
+| **C++ Syntax** | `virtual void foo();` (can function) | `virtual void foo() = 0;` (must function) |
+| **Example** | `Database`, `Vehicle`, `Shape` | `ILogger`, `ISerializable`, `IClickable` |
+
+**The Rule:**
+
+- Do they share **Data**? → **Abstract Class**.
+- Do they share only a **Method Signature**? → **Interface**.
+
+---
+
+### **2. C++ Function Types (The "Freedom" Scale)**
+
+When defining methods in a parent class, you are defining the rules for the children.
+
+1. **Pure Virtual (`= 0`) ⇒ The Contract**
+    - *Meaning:* "I don't know how to do this, but you **MUST** implement it."
+    - *Use Case:* `Shape::getArea()`.
+2. **Virtual (`{...}`) ⇒The Default**
+    - *Meaning:* "Here is a default implementation. Use it or override it."
+    - *Use Case:* `Enemy::attack()` (Default is punch, Wizard overrides to spell).
+3. **Non-Virtual ⇒ The Law**
+    - *Meaning:* "This behavior is fixed. Subclasses cannot change it."
+    - *Use Case:* `BankAccount::getID()`.
+
+---
+
+### **3. SOLID Principles (Applied to Parking Lot)**
+
+- **S - Single Responsibility Principle:**
+    - *Don't:* Make one giant class.
+    - *Do:* Split `ParkingLot` (Flow), `Ticket` (Data), and `PricingStrategy` (Math).
+- **O - Open/Closed Principle (Crucial):**
+    - *Concept:* Open for extension, closed for modification.
+    - *Application:* use the **Strategy Pattern** for pricing. If pricing rules change (e.g., "Holiday Pricing"), you add a **new class**, you don't rewrite the existing `Vehicle` class.
+- **L - Liskov Substitution Principle:**
+    - *Concept:* A child class must not break the parent's contract.
+    - *Application:* A `Bus` is a `Vehicle`. If a function takes `Vehicle*`, passing a `Bus*` should never crash the system.
+- **D - Dependency Inversion Principle:**
+    - *Concept:* Depend on Abstractions, not Concretions.
+    - *Application:* Your `ParkingManager` should store `shared_ptr<IParkingSpot>`, not `CarSpot`. This allows it to handle any spot type generically.
+
+---
+
+### **4. Concurrency & Thread Safety**
+
+In a backend role, your code must handle multiple users simultaneously.
+
+- **The Problem:** **Race Conditions**. Two threads check `isAvailable()` at the same time, both see `true`, and both grab the same spot.
+- **The Fix:** **Mutex Locks**.C++
+    
+    ```cpp
+    #include <mutex>
+    mutex mtx;
+    
+    void assignSpot() {
+        lock_guard<mutex> lock(mtx); // Locks here
+        // ... Critical Section (Check & Update) ...
+    } // Unlocks automatically here
+    ```
+    
+
+---
+
+### **5. Performance Optimization**
+
+Moving from "Junior" to "Senior" code involves scaling logic.
+
+- **The Problem:** Loop-based search (`O(N)`).
+    - `for (spot : allSpots)` gets slower as the parking lot grows.
+- **The Fix:** Map-based lookup (`O(1)`).
+    - `map<Size, vector<Spot>>`.
+    - Directly access `freeSpots[MEDIUM].back()` to find a spot instantly.
+
+---
+
+### **6. Key Design Patterns Used**
+
+1. **Strategy Pattern:**
+    - *Context:* Pricing rules change often.
+    - *Impl:* `PricingStrategy` interface ⇒  `HourlyStrategy`, `FlatStrategy`.
+2. **Singleton Pattern:**
+    - *Context:* There is only one physical Parking Lot.
+    - *Impl:* `ParkingLot::getInstance()`.
+3. **Builder / Factory (Concept):**
+    - *Context:* Creating complex objects or layouts.
+    - *Impl:* `parkingLot->addSpot(...)` allows dynamic configuration instead of hardcoding.
+
+---
+
+### **7. Common "Gotchas" to Avoid**
+
+1. **The "Ghost" Object:**
+    - *Bug:* `for (auto spot : spots)` creates a **copy**. Modifying it does not change the real array.
+    - *Fix:* Use `for (auto& spot : spots)` (Reference).
+2. **The Fragile Enum:**
+    - *Bug:* `if (spotSize >= vehicleSize)`. If someone adds a new Enum value (like `HANDICAPPED = 3`), the math breaks.
+    - *Fix:* Write a specific `canFit(Vehicle v)` method.
+3. **Memory Leaks:**
+    - *Fix:* Always use `std::shared_ptr` or `std::unique_ptr` instead of raw pointers (`new`/`delete`).
